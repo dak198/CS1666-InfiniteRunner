@@ -1,4 +1,4 @@
-## Infinite Runner - Gallagher's Odyssey
+## Infinite Runner - Urban Odyssey
 
 ## Canonical game repo URL: https://github.com/ckessler70/CS1666-InfiniteRunner
 
