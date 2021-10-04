@@ -1,1 +1,0 @@
-C:\Users\domin\Documents\GitHub\CS1666-InfiniteRunner\infinite-runner\target\debug\sdl_rust.exe: C:\Users\domin\Documents\GitHub\CS1666-InfiniteRunner\infinite-runner\src\lib.rs C:\Users\domin\Documents\GitHub\CS1666-InfiniteRunner\infinite-runner\src\main.rs
