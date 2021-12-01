@@ -51,7 +51,7 @@ impl Game for Credits {
     fn run(&mut self, core: &mut SDLCore) -> Result<GameState, String> {
         let mut count = CAM_H;
 
-        /********************* TEXTURES AND HEADSHOTS ******************/
+        /********************* TEXTURES AND HEADSHOTS ***************** */
 
         let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
 
@@ -186,7 +186,7 @@ impl Game for Credits {
             michael_hs,
         ];
 
-        /********************************************************************/
+        /******************************************************************* */
 
         let mut index = 0;
         let mut next_status = GameStatus::Main;

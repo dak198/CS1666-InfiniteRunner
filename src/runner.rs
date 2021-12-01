@@ -194,7 +194,7 @@ impl Game for Runner {
         // Object spawning vars
         let mut spawn_timer: i32 = 500; // Can spawn a new object when it reaches 0
 
-        /*~~~~~~~~ Stuff for background sine waves ~~~~~~~~~~~~~~*/
+        /* ~~~~~~~~ Stuff for background sine waves ~~~~~~~~~~~~~~ */
         // Background & sine wave vars
         let mut bg_buff = 0;
         let mut bg_tick = 0;
@@ -221,7 +221,7 @@ impl Game for Runner {
             background_curves[IND_BACKGROUND_BACK][i] =
                 proceduralgen::gen_perlin_hill_point((i + buff_2), freq, amp_2, 1.0, 820.0);
         }
-        /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
         // Perlin Noise init
         let mut random: [[(i32, i32); 256]; 256] = [[(0, 0); 256]; 256];
@@ -431,7 +431,8 @@ impl Game for Runner {
                                                           // coins value
 
                             last_coin_val = c.value();
-                            coin_timer = 60; // Time to show last_coin_val on screen
+                            coin_timer = 60; // Time to show last_coin_val on
+                                             // screen
                         }
                         continue;
                     }
@@ -483,12 +484,14 @@ impl Game for Runner {
                 player.flip();
 
                 //DEBUG PLAYER (Plz dont delete, just comment out)
-                //println!("A-> vx:{} ax:{}, vy:{} ay:{}",player.vel_x(),player.accel_x(),player.vel_y(),player.accel_y());
-                
+                //println!("A-> vx:{} ax:{}, vy:{}
+                // ay:{}",player.vel_x(),player.accel_x(),player.vel_y(),player.accel_y());
+
                 player.reset_accel();
 
                 //DEBUG PLAYER (Plz dont delete, just comment out)
-                //println!("B-> vx:{} ax:{}, vy:{} ay:{}",player.vel_x(),player.vel_y(),player.accel_x(),player.accel_y());
+                //println!("B-> vx:{} ax:{}, vy:{}
+                // ay:{}",player.vel_x(),player.vel_y(),player.accel_x(),player.accel_y());
 
                 // apply forces to obstacles
                 for o in all_obstacles.iter_mut() {

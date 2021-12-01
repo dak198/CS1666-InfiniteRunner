@@ -38,7 +38,8 @@ impl Physics {
     }
 
     // Applies terrain forces to a body, i.e. gravity, normal, and friction forces
-    // Params: body, angle of ground, ground position as SDL Point, coeff of kinetic friction
+    // Params: body, angle of ground, ground position as SDL Point, coeff of kinetic
+    // friction
     // Returns: none
     pub fn apply_terrain_forces<'a>(
         body: &mut impl Body<'a>,
@@ -52,17 +53,21 @@ impl Physics {
         let mut g: f64 = 1.5;
         //As of now, all conds lead to +accel on flat ground (we could change this)
         match terrain_type {
-            TerrainType::Asphalt => { //quick accel to max on flat
+            TerrainType::Asphalt => {
+                //quick accel to max on flat
                 fric_coeff = 0.05;
             }
-            TerrainType::Grass => { //moderate accel to max on flat
+            TerrainType::Grass => {
+                //moderate accel to max on flat
                 fric_coeff = 0.075;
             }
-            TerrainType::Sand => {  //v slow accel to max on flat & short jumps
-                fric_coeff = 0.06;  //less friction is more bc higher gravity
+            TerrainType::Sand => {
+                //v slow accel to max on flat & short jumps
+                fric_coeff = 0.06; //less friction is more bc higher gravity
                 g = 2.0;
             }
-            TerrainType::Water => { //NOT YET CONFIGURED
+            TerrainType::Water => {
+                //NOT YET CONFIGURED
                 fric_coeff = 0.2;
             }
         }
@@ -186,7 +191,7 @@ impl Physics {
     }
 }
 
-/******************************* TRAITS *******************************/
+/******************************* TRAITS ****************************** */
 
 pub trait Entity<'a> {
     fn texture(&self) -> &Texture<'a>;
@@ -240,9 +245,9 @@ pub trait Collectible<'a>: Entity<'a> {
     fn collected(&self) -> bool;
 }
 
-/**********************************************************************/
+/********************************************************************* */
 
-/****************************** PLAYER ********************************/
+/****************************** PLAYER ******************************* */
 
 pub struct Player<'a> {
     pub pos: (f64, f64),
@@ -299,7 +304,8 @@ impl<'a> Player<'a> {
         self.flipping
     }
 
-    // Returns specific power-up player has, or None if player hasn't collected a power-up
+    // Returns specific power-up player has, or None if player hasn't collected a
+    // power-up
     pub fn power_up(&self) -> Option<PowerType> {
         self.power_up
     }
@@ -369,7 +375,8 @@ impl<'a> Player<'a> {
             shielded = true;
         }
 
-        // if the collision box is taller than it is wide, the player hit the side of the object
+        // if the collision box is taller than it is wide, the player hit the side of
+        // the object
         if (self
             .hitbox()
             .intersection(obstacle.hitbox())
@@ -389,7 +396,7 @@ impl<'a> Player<'a> {
                         // If shielded or collision already happened, pretend nothing happened
                         false
                     } else {
-                        /********** ELASTIC COLLISION CALCULATION **********/
+                        /********** ELASTIC COLLISION CALCULATION ********* */
                         // https://en.wikipedia.org/wiki/Elastic_collision#One-dimensional_Newtonian
                         // Assumed object has velocity (0,0)
                         // Assumed player has velocity (vx,vy)
@@ -410,7 +417,7 @@ impl<'a> Player<'a> {
                         // alpha = Torque/body.rotational_inertia()
                         // For ease of calculation, just set omega = alpha
 
-                        /***************************************************/
+                        /************************************************** */
                         // Move obstacle
                         obstacle.collided = true;
                         obstacle.hard_set_vel((o_vx_f, o_vy_f));
@@ -430,7 +437,8 @@ impl<'a> Player<'a> {
             }
         }
         // if the collision box is wider than it is tall, the player hit the top of the object
-        // don't apply the collision to the top of an object if the player is moving upward, otherwise they will "stick" to the top on the way up
+        // don't apply the collision to the top of an object if the player is moving upward,
+        // otherwise they will "stick" to the top on the way up
         else if self.vel_y() < 0.0 {
             match obstacle.obstacle_type {
                 // On top collision with chest, treat the chest as if it's normal ground
@@ -471,7 +479,8 @@ impl<'a> Player<'a> {
 
     // Collects a coin
     // Params: coin to collect
-    // Returns: true if coin has been collected, false otherwise (e.g. if it's been collected already)
+    // Returns: true if coin has been collected, false otherwise (e.g. if it's been
+    // collected already)
     pub fn collide_coin(&mut self, coin: &mut Coin) -> bool {
         if !coin.collected() {
             coin.collect();
@@ -608,9 +617,9 @@ impl<'a> Body<'a> for Player<'a> {
     }
 }
 
-/**********************************************************************/
+/********************************************************************* */
 
-/*************************** OBSTACLE *********************************/
+/*************************** OBSTACLE ******************************** */
 
 pub struct Obstacle<'a> {
     pub pos: (f64, f64),
@@ -761,9 +770,9 @@ impl<'a> Body<'a> for Obstacle<'a> {
     }
 }
 
-/**********************************************************************/
+/********************************************************************* */
 
-/**************************** COIN ************************************/
+/**************************** COIN *********************************** */
 
 pub struct Coin<'a> {
     pub pos: (i32, i32),
@@ -832,9 +841,9 @@ impl<'a> Collectible<'a> for Coin<'a> {
     }
 }
 
-/**********************************************************************/
+/********************************************************************* */
 
-/*************************** POWER ************************************/
+/*************************** POWER *********************************** */
 
 pub struct Power<'a> {
     pub pos: (i32, i32),
