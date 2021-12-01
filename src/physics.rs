@@ -21,10 +21,7 @@ impl Physics {
     // Checks if entities are colliding
     // Params: entityA, entityB
     // Returns: true if entities are colliding, false otherwise
-    pub fn check_collision<'a>(
-        entity_a: &mut impl Entity<'a>,
-        entity_b: &mut impl Entity<'a>,
-    ) -> bool {
+    pub fn check_collision<'a>(entity_a: &mut impl Entity<'a>, entity_b: &mut impl Entity<'a>) -> bool {
         entity_a.hitbox().has_intersection(entity_b.hitbox())
     }
 
@@ -33,8 +30,7 @@ impl Physics {
     // Returns: true if player is upright, false otherwise
     pub fn check_player_upright<'a>(player: &Player, angle: f64, ground: Point) -> bool {
         !player.hitbox().contains_point(ground)
-            || (player.theta() < OMEGA * 6.0 + angle
-                || player.theta() > 2.0 * PI - OMEGA * 6.0 + angle)
+            || (player.theta() < OMEGA * 6.0 + angle || player.theta() > 2.0 * PI - OMEGA * 6.0 + angle)
     }
 
     // Applies terrain forces to a body, i.e. gravity, normal, and friction forces
@@ -155,13 +151,13 @@ impl Physics {
         let k = 0.2;
 
         // Find how far player has depressed the spring
-        let intersection = player.hitbox().intersection(body.hitbox());
+        // let intersection = player.hitbox().intersection(body.hitbox());
 
         // If the player is really touching the spring, apply the force
-        if let Some(overlap) = intersection {
-            let displacement = overlap.y() as f64;
+        if player.hitbox().has_intersection(body.hitbox()) {
+            let displacement = player.hitbox.bottom().y() - body.hitbox().bottom().y();
             // Force is always upwards
-            player.apply_force((0.0, k * displacement));
+            player.apply_force((0.0, k * displacement as f64));
         }
     }
 
@@ -206,7 +202,7 @@ pub trait Entity<'a> {
         self.hitbox().center()
     }
 
-    fn hitbox(&self) -> Rect;
+    fn hitbox(&self) -> PhysRect;
     fn align_hitbox_to_pos(&mut self); // After the pos is set with f64s, this method moves hitbox
                                        // to proper SDL coordinates using i32s
 
@@ -253,7 +249,8 @@ pub struct Player<'a> {
     pub pos: (f64, f64),
     velocity: (f64, f64),
     accel: (f64, f64),
-    hitbox: Rect,
+    drawbox: Rect,
+    hitbox: PhysRect,
 
     theta: f64, // angle of rotation, in radians
     omega: f64, // angular speed
@@ -270,12 +267,13 @@ pub struct Player<'a> {
 }
 
 impl<'a> Player<'a> {
-    pub fn new(hitbox: Rect, mass: f64, texture: &'a Texture<'a>) -> Player<'a> {
+    pub fn new(hitbox: PhysRect, drawbox: Rect, mass: f64, texture: &'a Texture<'a>) -> Player<'a> {
         Player {
             pos: (hitbox.x() as f64, hitbox.y() as f64),
             velocity: (0.0, 0.0),
             accel: (0.0, 0.0),
             hitbox,
+            drawbox,
 
             theta: 0.0,
             omega: 0.0,
@@ -375,19 +373,10 @@ impl<'a> Player<'a> {
             shielded = true;
         }
 
-        // if the collision box is taller than it is wide, the player hit the side of
-        // the object
-        if (self
-            .hitbox()
-            .intersection(obstacle.hitbox())
-            .unwrap()
-            .height()
-            > self
-                .hitbox()
-                .intersection(obstacle.hitbox())
-                .unwrap()
-                .width())
-        {
+        // nearest_side checks for which side of the obstacle had the closest midpoint
+        // to any point on the player rectangle
+        let collision_side = self.hitbox.nearest_side(obstacle.hitbox());
+        if (collision_side == 1 || collision_side == 3) {
             // Response to collision dependent on type of obstacle
             match obstacle.obstacle_type {
                 // For statue and chest, elastic collision
@@ -424,10 +413,7 @@ impl<'a> Player<'a> {
 
                         // Move player
                         self.hard_set_vel((p_vx_f, p_vy_f));
-                        self.hard_set_pos((
-                            obstacle.x() as f64 - 1.05 * TILE_SIZE,
-                            self.y() as f64,
-                        ));
+                        self.hard_set_pos((obstacle.x() as f64 - 1.05 * TILE_SIZE, self.y() as f64));
                         self.align_hitbox_to_pos();
                         true
                     }
@@ -435,11 +421,7 @@ impl<'a> Player<'a> {
                 // For Balloon, do nothing upon SIDE collision
                 ObstacleType::Balloon => false,
             }
-        }
-        // if the collision box is wider than it is tall, the player hit the top of the object
-        // don't apply the collision to the top of an object if the player is moving upward,
-        // otherwise they will "stick" to the top on the way up
-        else if self.vel_y() < 0.0 {
+        } else if self.vel_y() < 0.0 {
             match obstacle.obstacle_type {
                 // On top collision with chest, treat the chest as if it's normal ground
                 ObstacleType::Chest => {
@@ -509,7 +491,7 @@ impl<'a> Entity<'a> for Player<'a> {
         self.texture
     }
 
-    fn hitbox(&self) -> Rect {
+    fn hitbox(&self) -> PhysRect {
         self.hitbox
     }
 
@@ -578,8 +560,7 @@ impl<'a> Body<'a> for Player<'a> {
             self.velocity.0 = (self.velocity.0 + self.accel.0).clamp(1.0, UPPER_SPEED);
         }
 
-        self.velocity.1 =
-            (self.velocity.1 + self.accel.1).clamp(3.0 * LOWER_SPEED, 5.0 * UPPER_SPEED);
+        self.velocity.1 = (self.velocity.1 + self.accel.1).clamp(3.0 * LOWER_SPEED, 5.0 * UPPER_SPEED);
     }
 
     fn hard_set_vel(&mut self, vel: (f64, f64)) {
@@ -625,7 +606,7 @@ pub struct Obstacle<'a> {
     pub pos: (f64, f64),
     velocity: (f64, f64),
     accel: (f64, f64),
-    hitbox: Rect,
+    hitbox: PhysRect,
 
     mass: f64,
     texture: &'a Texture<'a>,
@@ -640,12 +621,7 @@ pub struct Obstacle<'a> {
 }
 
 impl<'a> Obstacle<'a> {
-    pub fn new(
-        hitbox: Rect,
-        mass: f64,
-        texture: &'a Texture<'a>,
-        obstacle_type: ObstacleType,
-    ) -> Obstacle<'a> {
+    pub fn new(hitbox: PhysRect, mass: f64, texture: &'a Texture<'a>, obstacle_type: ObstacleType) -> Obstacle<'a> {
         Obstacle {
             pos: (hitbox.x() as f64, hitbox.y() as f64),
             velocity: (0.0, 0.0),
@@ -684,7 +660,7 @@ impl<'a> Entity<'a> for Obstacle<'a> {
         self.texture
     }
 
-    fn hitbox(&self) -> Rect {
+    fn hitbox(&self) -> PhysRect {
         self.hitbox
     }
 
@@ -776,14 +752,14 @@ impl<'a> Body<'a> for Obstacle<'a> {
 
 pub struct Coin<'a> {
     pub pos: (i32, i32),
-    hitbox: Rect,
+    hitbox: PhysRect,
     texture: &'a Texture<'a>,
     value: i32,
     collected: bool,
 }
 
 impl<'a> Coin<'a> {
-    pub fn new(hitbox: Rect, texture: &'a Texture<'a>, value: i32) -> Coin<'a> {
+    pub fn new(hitbox: PhysRect, texture: &'a Texture<'a>, value: i32) -> Coin<'a> {
         Coin {
             pos: (hitbox.x(), hitbox.y()),
             texture,
@@ -808,7 +784,7 @@ impl<'a> Entity<'a> for Coin<'a> {
         self.texture
     }
 
-    fn hitbox(&self) -> Rect {
+    fn hitbox(&self) -> PhysRect {
         self.hitbox
     }
 
@@ -847,14 +823,14 @@ impl<'a> Collectible<'a> for Coin<'a> {
 
 pub struct Power<'a> {
     pub pos: (i32, i32),
-    hitbox: Rect,
+    hitbox: PhysRect,
     texture: &'a Texture<'a>,
     power_type: PowerType,
     collected: bool,
 }
 
 impl<'a> Power<'a> {
-    pub fn new(hitbox: Rect, texture: &'a Texture<'a>, power_type: PowerType) -> Power<'a> {
+    pub fn new(hitbox: PhysRect, texture: &'a Texture<'a>, power_type: PowerType) -> Power<'a> {
         Power {
             pos: (hitbox.x(), hitbox.y()),
             hitbox,
@@ -879,7 +855,7 @@ impl<'a> Entity<'a> for Power<'a> {
         self.texture
     }
 
-    fn hitbox(&self) -> Rect {
+    fn hitbox(&self) -> PhysRect {
         self.hitbox
     }
 
@@ -909,5 +885,383 @@ impl<'a> Collectible<'a> for Power<'a> {
 
     fn collected(&self) -> bool {
         self.collected
+    }
+}
+
+/******************************ROTATING
+ * HITBOX******************************* */
+
+/// The maximal integer value that can be used for rectangles.
+///
+/// This value is smaller than strictly needed, but is useful in ensuring that
+/// rect sizes will never have to be truncated when clamping.
+pub fn max_int_value() -> u32 {
+    i32::max_value() as u32 / 2
+}
+
+/// The minimal integer value that can be used for rectangle positions
+/// and points.
+///
+/// This value is needed, because otherwise the width of a rectangle created
+/// from a point would be able to exceed the maximum width.
+pub fn min_int_value() -> i32 {
+    i32::min_value() / 2
+}
+
+fn clamp_size(val: u32) -> u32 {
+    if val == 0 {
+        1
+    } else if val > max_int_value() {
+        max_int_value()
+    } else {
+        val
+    }
+}
+
+fn clamp_position(val: i32) -> i32 {
+    if val > max_int_value() as i32 {
+        max_int_value() as i32
+    } else if val < min_int_value() {
+        min_int_value()
+    } else {
+        val
+    }
+}
+
+// converts angle to an equivalent value between 0 and 2π
+fn clamp_angle(val: f64) -> f64 {
+    val % (2.0 * PI)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PhysRect {
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    theta: f64,
+    coords: [Point; 4],
+}
+
+impl PhysRect {
+    // rectangle with no rotation applied
+    pub fn new(x: i32, y: i32, width: u32, height: u32) -> PhysRect {
+        let x = clamp_position(x);
+        let y = clamp_position(y);
+        let w = clamp_size(width) as i32;
+        let h = clamp_size(height) as i32;
+        PhysRect {
+            x,
+            y,
+            w,
+            h,
+            theta: 0.0,
+            coords: [
+                Point::new(x, y),
+                Point::new(x + w, y),
+                Point::new(x + w, y + h),
+                Point::new(x, y + h),
+            ],
+        }
+    }
+
+    pub fn from_center<P>(center: P, width: u32, height: u32) -> PhysRect
+    where
+        P: Into<Point>,
+    {
+        let w = clamp_size(width) as i32;
+        let h = clamp_size(height) as i32;
+        let mut rect = PhysRect {
+            x: 0,
+            y: 0,
+            w,
+            h,
+            theta: 0.0,
+            coords: [Point::new(0, 0), Point::new(w, 0), Point::new(w, h), Point::new(0, h)],
+        };
+        rect.center_on(center.into());
+        rect
+    }
+
+    pub fn as_rect(&self) -> Rect {
+        Rect::from_center(self.center(), self.width(), self.height())
+    }
+
+    /// The horizontal position of the original top left corner of the
+    /// rectangle.
+    pub fn x(&self) -> i32 {
+        self.x
+    }
+
+    /// The vertical position of the original top left corner of this rectangle.
+    pub fn y(&self) -> i32 {
+        self.y
+    }
+
+    /// The four corners of the rectangle in clockwise order starting with the
+    /// original top left
+    pub fn coords(&self) -> [Point; 4] {
+        self.coords
+    }
+
+    /// The width of this rectangle
+    pub fn width(&self) -> u32 {
+        self.w as u32
+    }
+
+    /// The height of this rectangle
+    pub fn height(&self) -> u32 {
+        self.h as u32
+    }
+
+    /// The rotation angle of this rectangle
+    pub fn angle(&self) -> f64 {
+        self.theta
+    }
+
+    /// Sets the vertical position of this rectangle to the given value,
+    /// clamped to be less than or equal to i32::max_value() / 2.
+    /// Position is based on the original upper right corner of the rectangle.
+    pub fn set_x(&mut self, x: i32) {
+        let d = x - self.x();
+        self.x = clamp_position(x);
+        for i in 0..self.coords.len() {
+            self.coords[i] = self.coords[i].offset(d, 0);
+        }
+    }
+
+    /// Sets the vertical position of this rectangle to the given value,
+    /// clamped to be less than or equal to i32::max_value() / 2.
+    /// Position is based on the original upper right corner of the rectangle.
+    pub fn set_y(&mut self, y: i32) {
+        let d = y - self.y();
+        self.y = clamp_position(y);
+        for i in 0..self.coords.len() {
+            self.coords[i] = self.coords[i].offset(0, d);
+        }
+    }
+
+    pub fn set_angle(&mut self, theta: f64) {
+        let d = theta - self.angle();
+        self.rotate(d);
+    }
+
+    /// Sets the height of this rectangle to the given value,
+    /// clamped to be less than or equal to i32::max_value() / 2.
+    pub fn set_height(&mut self, height: u32) {
+        self.h = clamp_size(height) as i32;
+    }
+
+    /// The rectangle's current leftmost point
+    pub fn left(&self) -> Point {
+        let mut left = self.coords[0];
+        for p in self.coords {
+            if p.x() <= left.x() {
+                left = p;
+            }
+        }
+        left
+    }
+
+    /// The rectangle's current rightmost point
+    pub fn right(&self) -> Point {
+        let mut right = self.coords[0];
+        for p in self.coords {
+            if p.x() >= right.x() {
+                right = p;
+            }
+        }
+        right
+    }
+
+    /// The rectangle's current topmost point
+    pub fn top(&self) -> Point {
+        let mut top = self.coords[0];
+        for p in self.coords {
+            if p.y() <= top.y() {
+                top = p;
+            }
+        }
+        top
+    }
+
+    /// The rectangle's current bottom-most point
+    pub fn bottom(&self) -> Point {
+        let mut bottom = self.coords[0];
+        for p in self.coords {
+            if p.y() <= bottom.y() {
+                bottom = p;
+            }
+        }
+        bottom
+    }
+
+    /// The rectangle's center point
+    pub fn center(&self) -> Point {
+        let x = (self.coords[0].x() + self.coords[2].x()) / 2;
+        let y = (self.coords[0].y() + self.coords[2].y()) / 2;
+        Point::new(x, y)
+    }
+
+    // Centers the rectangle on point P
+    pub fn center_on<P>(&mut self, point: P)
+    where
+        P: Into<(i32, i32)>,
+    {
+        let (x, y) = point.into();
+        let d_x = clamp_position(x) - self.center().x();
+        let d_y = clamp_position(y) - self.center().y();
+        for p in self.coords {
+            p.offset(d_x, d_y);
+        }
+        self.x = self.coords[0].x();
+        self.y = self.coords[0].y();
+    }
+
+    /// Move this rect and clamp the positions to prevent over/underflow.
+    /// This also clamps the size to prevent overflow.
+    pub fn offset(&mut self, x: i32, y: i32) {
+        let old_x = self.x;
+        let old_y = self.y;
+        match self.x.checked_add(x) {
+            Some(val) => self.x = clamp_position(val),
+            None => {
+                if x >= 0 {
+                    self.x = max_int_value() as i32;
+                } else {
+                    self.x = i32::min_value();
+                }
+            }
+        }
+        match self.y.checked_add(y) {
+            Some(val) => self.y = clamp_position(val),
+            None => {
+                if y >= 0 {
+                    self.y = max_int_value() as i32;
+                } else {
+                    self.y = i32::min_value();
+                }
+            }
+        }
+        let d_x = old_x - self.x;
+        let d_y = old_x - self.y;
+        for i in 0..self.coords.len() {
+            self.coords[i] = self.coords[i].offset(d_x, d_y);
+        }
+    }
+
+    /// Moves this rect to the given position after clamping the values.
+    pub fn reposition<P>(&mut self, point: P)
+    where
+        P: Into<(i32, i32)>,
+    {
+        let (x, y) = point.into();
+        let old_x = self.x();
+        let old_y = self.y();
+        self.x = clamp_position(x);
+        self.y = clamp_position(y);
+        let d_x = old_x - self.x();
+        let d_y = old_x - self.y();
+        for i in 0..self.coords.len() {
+            self.coords[i] = self.coords[i].offset(d_x, d_y);
+        }
+    }
+
+    /// Resizes this rect to the given size after clamping the values
+    pub fn resize(&mut self, width: u32, height: u32) {
+        let d_w = (width - self.width()) as f64;
+        let d_h = (height - self.height()) as f64;
+        let dist = (d_w.powi(2) + d_h.powi(2)).sqrt();
+        self.coords[1] = self.coords[1].offset((d_w * self.angle().cos()) as i32, (d_w * self.angle().sin()) as i32);
+        self.coords[2] = self.coords[2].offset((dist * self.angle().cos()) as i32, (dist * self.angle().sin()) as i32);
+        self.coords[3] = self.coords[3].offset((d_h * self.angle().cos()) as i32, (d_w * self.angle().sin()) as i32);
+        self.w = clamp_size(width) as i32;
+        self.h = clamp_size(height) as i32;
+    }
+
+    pub fn rotate(&mut self, theta: f64) {
+        let c = self.center();
+        for i in 0..self.coords.len() {
+            let x = theta.cos() * (self.coords[i].x() - c.x()) as f64
+                - theta.sin() * (self.coords[i].y() - c.y()) as f64
+                + c.x() as f64;
+            let y = theta.sin() * (self.coords[i].x() - c.x()) as f64
+                + theta.cos() * (self.coords[i].y() - c.y()) as f64
+                + c.y() as f64;
+            self.coords[i] = Point::new(x as i32, y as i32)
+        }
+        self.theta = theta;
+        self.x = self.coords[0].x();
+        self.y = self.coords[0].y();
+    }
+
+    /// Checks whether this rect contains a given point
+    pub fn contains_point<P>(&self, point: P) -> bool
+    where
+        P: Into<(i32, i32)>,
+    {
+        let (x, y) = point.into();
+        let mut c = false;
+        let mut j = 3;
+        for i in 0..self.coords.len() {
+            if (((self.coords[i].y() > y) != (self.coords[j].y() > y))
+                && (x
+                    < (self.coords[j].x() - self.coords[i].x()) * (y - self.coords[i].y())
+                        / (self.coords[j].y() - self.coords[i].y())
+                        + self.coords[i].x()))
+            {
+                c = !c;
+            }
+            j = i;
+        }
+        c
+    }
+
+    /// Checks whether this rect intersects a given rect
+    pub fn has_intersection(&self, other: PhysRect) -> bool {
+        for i in 0..other.coords.len() {
+            if self.contains_point(other.coords[i]) {
+                return true;
+            }
+        }
+        for i in 0..self.coords.len() {
+            if other.contains_point(self.coords[i]) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Returns an integer corresponding to the side of this rect that the given
+    /// rect's points are closest to 0, 1, 2, and 3 correspond to top,
+    /// right, bottom, and left respectively Mainly used for collision logic
+    pub fn nearest_side(&self, other: PhysRect) -> i32 {
+        // store and index the midpoints of the given rectangle
+        let mut mids = Vec::new();
+        let mut j = 3;
+        for i in 0..other.coords.len() {
+            let p = Point::new(
+                (other.coords[i].x() + other.coords[j].x()) / 2,
+                (other.coords[i].y() + other.coords[j].y) / 2,
+            );
+            mids.push(p);
+            j = i;
+        }
+        // find the side of the given rectangle whose midpoint is closest to a point in
+        // this rectangle
+        let mut min_dist = f64::MAX;
+        let mut min_side = 0;
+        for i in 0..self.coords.len() {
+            for p in &mids {
+                let dist = (((self.coords[i].x() - p.x()) as f64).powi(2)
+                    + ((self.coords[i].y() - p.y()) as f64).powi(2))
+                .sqrt();
+                if dist <= min_dist {
+                    min_dist = dist;
+                    min_side = i as i32;
+                }
+            }
+        }
+        min_side
     }
 }

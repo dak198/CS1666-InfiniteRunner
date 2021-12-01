@@ -3,6 +3,7 @@ use crate::physics::Coin;
 use crate::physics::Collectible;
 use crate::physics::Entity;
 use crate::physics::Obstacle;
+use crate::physics::PhysRect;
 use crate::physics::Physics;
 use crate::physics::Player;
 use crate::physics::Power;
@@ -11,6 +12,7 @@ use crate::proceduralgen;
 use crate::proceduralgen::ProceduralGen;
 use crate::proceduralgen::TerrainSegment;
 
+use crate::p_rect;
 use crate::rect;
 
 use inf_runner::Game;
@@ -145,12 +147,8 @@ impl Game for Runner {
 
         // Create player at default position
         let mut player = Player::new(
-            rect!(
-                PLAYER_X,
-                TERRAIN_UPPER_BOUND + TILE_SIZE as i32,
-                TILE_SIZE,
-                TILE_SIZE
-            ),
+            p_rect!(PLAYER_X, TERRAIN_UPPER_BOUND + TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
+            rect!(PLAYER_X, TERRAIN_UPPER_BOUND + TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
             3.0, // mass of player
             &tex_player,
         );
@@ -277,9 +275,7 @@ impl Game for Runner {
                             next_status = GameStatus::Credits;
                             break 'gameloop;
                         }
-                        Event::KeyDown {
-                            keycode: Some(k), ..
-                        } => match k {
+                        Event::KeyDown { keycode: Some(k), .. } => match k {
                             Keycode::Escape => {
                                 game_paused = false;
                             }
@@ -293,9 +289,7 @@ impl Game for Runner {
                             }
                             _ => {}
                         },
-                        Event::KeyUp {
-                            keycode: Some(k), ..
-                        } => match k {
+                        Event::KeyUp { keycode: Some(k), .. } => match k {
                             Keycode::Space => {
                                 game_paused = false;
                             }
@@ -312,14 +306,10 @@ impl Game for Runner {
                     core.wincan.fill_rect(rect!(0, 0, CAM_W, CAM_H))?;
 
                     // Draw pause screen text
-                    core.wincan
-                        .copy(&tex_resume, None, Some(rect!(100, 100, 1000, 125)))?;
-                    core.wincan
-                        .copy(&tex_restart, None, Some(rect!(100, 250, 700, 125)))?;
-                    core.wincan
-                        .copy(&tex_main, None, Some(rect!(100, 400, 600, 125)))?;
-                    core.wincan
-                        .copy(&tex_quit, None, Some(rect!(100, 550, 600, 125)))?;
+                    core.wincan.copy(&tex_resume, None, Some(rect!(100, 100, 1000, 125)))?;
+                    core.wincan.copy(&tex_restart, None, Some(rect!(100, 250, 700, 125)))?;
+                    core.wincan.copy(&tex_main, None, Some(rect!(100, 400, 600, 125)))?;
+                    core.wincan.copy(&tex_quit, None, Some(rect!(100, 550, 600, 125)))?;
 
                     core.wincan.present();
                     initial_pause = false;
@@ -337,28 +327,21 @@ impl Game for Runner {
 
                 //  Get ground point at player and TILE_SIZE ahead of player
                 let curr_ground_point: Point = get_ground_coord(&all_terrain, PLAYER_X);
-                let next_ground_point: Point =
-                    get_ground_coord(&all_terrain, PLAYER_X + TILE_SIZE as i32);
-                let angle = ((next_ground_point.y() as f64 - curr_ground_point.y() as f64)
-                    / (TILE_SIZE as f64))
-                    .atan();
+                let next_ground_point: Point = get_ground_coord(&all_terrain, PLAYER_X + TILE_SIZE as i32);
+                let angle = ((next_ground_point.y() as f64 - curr_ground_point.y() as f64) / (TILE_SIZE as f64)).atan();
 
                 /* ~~~~~~ Handle Input ~~~~~~ */
                 let mut keypress_moment: SystemTime;
                 for event in core.event_pump.poll_iter() {
                     match event {
                         Event::Quit { .. } => break 'gameloop,
-                        Event::KeyDown {
-                            keycode: Some(k), ..
-                        } => match k {
+                        Event::KeyDown { keycode: Some(k), .. } => match k {
                             Keycode::W | Keycode::Up | Keycode::Space => {
                                 if player.is_jumping() {
                                     player.resume_flipping();
-                                } else {
-                                    if !player.jumpmoment_lock() {
-                                        keypress_moment = SystemTime::now();
-                                        player.set_jumpmoment(keypress_moment);
-                                    }
+                                } else if !player.jumpmoment_lock() {
+                                    keypress_moment = SystemTime::now();
+                                    player.set_jumpmoment(keypress_moment);
                                 }
                             }
                             Keycode::Escape => {
@@ -367,9 +350,7 @@ impl Game for Runner {
                             }
                             _ => {}
                         },
-                        Event::KeyUp {
-                            keycode: Some(k), ..
-                        } => match k {
+                        Event::KeyUp { keycode: Some(k), .. } => match k {
                             Keycode::W | Keycode::Up | Keycode::Space => {
                                 let jump_moment: SystemTime = player.jump_moment();
                                 player.jump(
@@ -410,10 +391,8 @@ impl Game for Runner {
                 // Check through all collisions with obstacles
                 // End game if crash occurs
                 for o in all_obstacles.iter_mut() {
-                    if Physics::check_collision(&mut player, o) {
-                        if player.collide_obstacle(o) {
-                            game_over = true;
-                        }
+                    if Physics::check_collision(&mut player, o) && player.collide_obstacle(o) {
+                        game_over = true;
                     }
                 }
 
@@ -501,13 +480,7 @@ impl Game for Runner {
                         let object_terrain_type = get_ground_type(&all_terrain, o.x());
                         // Very small friction coefficient because there's no
                         // "skate force" to counteract friction
-                        Physics::apply_terrain_forces(
-                            o,
-                            angle,
-                            object_ground,
-                            object_terrain_type,
-                            None,
-                        );
+                        Physics::apply_terrain_forces(o, angle, object_ground, object_terrain_type, None);
                         o.update_vel(false);
                         o.update_pos(object_ground, angle, game_over);
                     }
@@ -522,8 +495,7 @@ impl Game for Runner {
                     // Every 3 ticks, build a new front mountain segment
                     if bg_tick % 3 == 0 {
                         for i in 0..(BG_CURVES_SIZE as usize - 1) {
-                            background_curves[IND_BACKGROUND_MID][i] =
-                                background_curves[IND_BACKGROUND_MID][i + 1];
+                            background_curves[IND_BACKGROUND_MID][i] = background_curves[IND_BACKGROUND_MID][i + 1];
                         }
                         buff_1 += 1;
                         let chunk_1 = proceduralgen::gen_perlin_hill_point(
@@ -533,15 +505,13 @@ impl Game for Runner {
                             0.5,
                             600.0,
                         );
-                        background_curves[IND_BACKGROUND_MID][(BG_CURVES_SIZE - 1) as usize] =
-                            chunk_1;
+                        background_curves[IND_BACKGROUND_MID][(BG_CURVES_SIZE - 1) as usize] = chunk_1;
                     }
 
                     // Every 5 ticks, build a new back mountain segment
                     if bg_tick % 5 == 0 {
                         for i in 0..(BG_CURVES_SIZE as usize - 1) {
-                            background_curves[IND_BACKGROUND_BACK][i] =
-                                background_curves[IND_BACKGROUND_BACK][i + 1];
+                            background_curves[IND_BACKGROUND_BACK][i] = background_curves[IND_BACKGROUND_BACK][i + 1];
                         }
                         buff_2 += 1;
                         let chunk_2 = proceduralgen::gen_perlin_hill_point(
@@ -551,8 +521,7 @@ impl Game for Runner {
                             1.0,
                             820.0,
                         );
-                        background_curves[IND_BACKGROUND_BACK][(BG_CURVES_SIZE - 1) as usize] =
-                            chunk_2;
+                        background_curves[IND_BACKGROUND_BACK][(BG_CURVES_SIZE - 1) as usize] = chunk_2;
                     }
 
                     // Value spawn_timer is reset to upon spawning an object.
@@ -601,15 +570,9 @@ impl Game for Runner {
                     // Spawn new object
                     match new_object {
                         Some(StaticObject::Statue) => {
-                            let spawn_coord: Point =
-                                get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
+                            let spawn_coord: Point = get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
                             let obstacle = Obstacle::new(
-                                rect!(
-                                    spawn_coord.x,
-                                    spawn_coord.y - TILE_SIZE as i32,
-                                    TILE_SIZE,
-                                    TILE_SIZE
-                                ),
+                                p_rect!(spawn_coord.x, spawn_coord.y - TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
                                 50.0, // mass
                                 &tex_statue,
                                 ObstacleType::Statue,
@@ -617,15 +580,9 @@ impl Game for Runner {
                             all_obstacles.push(obstacle);
                         }
                         Some(StaticObject::Balloon) => {
-                            let spawn_coord: Point =
-                                get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
+                            let spawn_coord: Point = get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
                             let obstacle = Obstacle::new(
-                                rect!(
-                                    spawn_coord.x,
-                                    spawn_coord.y - TILE_SIZE as i32,
-                                    TILE_SIZE,
-                                    TILE_SIZE
-                                ),
+                                p_rect!(spawn_coord.x, spawn_coord.y - TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
                                 1.0,
                                 &tex_balloon,
                                 ObstacleType::Balloon,
@@ -633,15 +590,9 @@ impl Game for Runner {
                             all_obstacles.push(obstacle);
                         }
                         Some(StaticObject::Chest) => {
-                            let spawn_coord: Point =
-                                get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
+                            let spawn_coord: Point = get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
                             let obstacle = Obstacle::new(
-                                rect!(
-                                    spawn_coord.x,
-                                    spawn_coord.y - TILE_SIZE as i32,
-                                    TILE_SIZE,
-                                    TILE_SIZE
-                                ),
+                                p_rect!(spawn_coord.x, spawn_coord.y - TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
                                 1.0,
                                 &tex_chest,
                                 ObstacleType::Chest,
@@ -649,30 +600,18 @@ impl Game for Runner {
                             all_obstacles.push(obstacle);
                         }
                         Some(StaticObject::Coin) => {
-                            let spawn_coord: Point =
-                                get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
+                            let spawn_coord: Point = get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
                             let coin = Coin::new(
-                                rect!(
-                                    spawn_coord.x,
-                                    spawn_coord.y - TILE_SIZE as i32,
-                                    TILE_SIZE,
-                                    TILE_SIZE
-                                ),
+                                p_rect!(spawn_coord.x, spawn_coord.y - TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
                                 &tex_coin,
                                 1000, // value
                             );
                             all_coins.push(coin);
                         }
                         Some(StaticObject::Power) => {
-                            let spawn_coord: Point =
-                                get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
+                            let spawn_coord: Point = get_ground_coord(&all_terrain, (CAM_W as i32) - 1);
                             let pow = Power::new(
-                                rect!(
-                                    spawn_coord.x,
-                                    spawn_coord.y - TILE_SIZE as i32,
-                                    TILE_SIZE,
-                                    TILE_SIZE
-                                ),
+                                p_rect!(spawn_coord.x, spawn_coord.y - TILE_SIZE as i32, TILE_SIZE, TILE_SIZE),
                                 &tex_powerup,
                                 proceduralgen::choose_power_up(),
                             );
@@ -865,26 +804,17 @@ impl Game for Runner {
                 core.wincan.fill_rect(rect!(0, 470, CAM_W, CAM_H))?;
 
                 // Sky
+                core.wincan.copy(&tex_sky, None, rect!(bg_buff, 0, CAM_W, CAM_H / 3))?;
                 core.wincan
-                    .copy(&tex_sky, None, rect!(bg_buff, 0, CAM_W, CAM_H / 3))?;
-                core.wincan.copy(
-                    &tex_sky,
-                    None,
-                    rect!(CAM_W as i32 + bg_buff, 0, CAM_W, CAM_H / 3),
-                )?;
+                    .copy(&tex_sky, None, rect!(CAM_W as i32 + bg_buff, 0, CAM_W, CAM_H / 3))?;
 
                 // Sunset gradient - doesn't need to scroll left
-                core.wincan
-                    .copy(&tex_grad, None, rect!(0, -128, CAM_W, CAM_H))?;
+                core.wincan.copy(&tex_grad, None, rect!(0, -128, CAM_W, CAM_H))?;
 
                 // Background
+                core.wincan.copy(&tex_bg, None, rect!(bg_buff, -150, CAM_W, CAM_H))?;
                 core.wincan
-                    .copy(&tex_bg, None, rect!(bg_buff, -150, CAM_W, CAM_H))?;
-                core.wincan.copy(
-                    &tex_bg,
-                    None,
-                    rect!(bg_buff + (CAM_W as i32), -150, CAM_W, CAM_H),
-                )?;
+                    .copy(&tex_bg, None, rect!(bg_buff + (CAM_W as i32), -150, CAM_W, CAM_H))?;
 
                 // Background perlin noise curves
                 for i in 0..background_curves[IND_BACKGROUND_MID].len() - 1 {
@@ -911,39 +841,24 @@ impl Game for Runner {
                 if player.power_up().is_some() {
                     match player.power_up() {
                         Some(PowerType::SpeedBoost) => {
-                            core.wincan.copy(
-                                &tex_speed,
-                                None,
-                                rect!(10, 100, TILE_SIZE, TILE_SIZE),
-                            )?;
+                            core.wincan
+                                .copy(&tex_speed, None, rect!(10, 100, TILE_SIZE, TILE_SIZE))?;
                         }
                         Some(PowerType::ScoreMultiplier) => {
-                            core.wincan.copy(
-                                &tex_multiplier,
-                                None,
-                                rect!(10, 100, TILE_SIZE, TILE_SIZE),
-                            )?;
+                            core.wincan
+                                .copy(&tex_multiplier, None, rect!(10, 100, TILE_SIZE, TILE_SIZE))?;
                         }
                         Some(PowerType::BouncyShoes) => {
-                            core.wincan.copy(
-                                &tex_bouncy,
-                                None,
-                                rect!(10, 100, TILE_SIZE, TILE_SIZE),
-                            )?;
+                            core.wincan
+                                .copy(&tex_bouncy, None, rect!(10, 100, TILE_SIZE, TILE_SIZE))?;
                         }
                         Some(PowerType::LowerGravity) => {
-                            core.wincan.copy(
-                                &tex_floaty,
-                                None,
-                                rect!(10, 100, TILE_SIZE, TILE_SIZE),
-                            )?;
+                            core.wincan
+                                .copy(&tex_floaty, None, rect!(10, 100, TILE_SIZE, TILE_SIZE))?;
                         }
                         Some(PowerType::Shield) => {
-                            core.wincan.copy(
-                                &tex_shield,
-                                None,
-                                rect!(10, 100, TILE_SIZE, TILE_SIZE),
-                            )?;
+                            core.wincan
+                                .copy(&tex_shield, None, rect!(10, 100, TILE_SIZE, TILE_SIZE))?;
                         }
                         _ => {}
                     }
@@ -989,7 +904,7 @@ impl Game for Runner {
                 core.wincan.set_draw_color(Color::BLACK);
 
                 // Player's hitbox
-                core.wincan.draw_rect(player.hitbox())?;
+                core.wincan.draw_rect(player.hitbox().as_rect())?;
 
                 // Obstacles
                 for obs in all_obstacles.iter() {
@@ -1006,7 +921,7 @@ impl Game for Runner {
                                 false,
                             )?;
                             core.wincan.set_draw_color(Color::RED);
-                            core.wincan.draw_rect(obs.hitbox())?;
+                            core.wincan.draw_rect(obs.hitbox().as_rect())?;
                             break;
                         }
                         ObstacleType::Balloon => {
@@ -1020,7 +935,7 @@ impl Game for Runner {
                                 false,
                             )?;
                             core.wincan.set_draw_color(Color::BLUE);
-                            core.wincan.draw_rect(obs.hitbox())?;
+                            core.wincan.draw_rect(obs.hitbox().as_rect())?;
                         }
                         ObstacleType::Chest => {
                             core.wincan.copy_ex(
@@ -1033,7 +948,7 @@ impl Game for Runner {
                                 false,
                             )?;
                             core.wincan.set_draw_color(Color::BLUE);
-                            core.wincan.draw_rect(obs.hitbox())?;
+                            core.wincan.draw_rect(obs.hitbox().as_rect())?;
                         }
                     }
                 }
@@ -1050,7 +965,7 @@ impl Game for Runner {
                         false,
                     )?;
                     core.wincan.set_draw_color(Color::GREEN);
-                    core.wincan.draw_rect(coin.hitbox())?;
+                    core.wincan.draw_rect(coin.hitbox().as_rect())?;
                 }
 
                 // Powerups (on the ground, not active or collected)
@@ -1065,7 +980,7 @@ impl Game for Runner {
                         false,
                     )?;
                     core.wincan.set_draw_color(Color::YELLOW);
-                    core.wincan.draw_rect(power.hitbox())?;
+                    core.wincan.draw_rect(power.hitbox().as_rect())?;
                 }
 
                 // Setup for the text of the total_score to be displayed
@@ -1078,8 +993,7 @@ impl Game for Runner {
                 let tex_score = texture_creator
                     .create_texture_from_surface(&tex_score)
                     .map_err(|e| e.to_string())?;
-                core.wincan
-                    .copy(&tex_score, None, Some(rect!(10, 10, 100, 50)))?;
+                core.wincan.copy(&tex_score, None, Some(rect!(10, 10, 100, 50)))?;
 
                 // Display added coin value when coin is collected
                 let coin_surface = font
@@ -1092,8 +1006,7 @@ impl Game for Runner {
 
                 // Only show right after collecting a coin
                 if coin_timer > 0 {
-                    core.wincan
-                        .copy(&tex_coin_val, None, Some(rect!(10, 50, 100, 50)))?;
+                    core.wincan.copy(&tex_coin_val, None, Some(rect!(10, 50, 100, 50)))?;
                     coin_timer -= 1;
                 }
 

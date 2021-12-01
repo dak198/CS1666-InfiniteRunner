@@ -11,7 +11,6 @@ mod credits;
 mod physics;
 mod proceduralgen;
 mod runner;
-mod shape;
 mod testbezier;
 mod title;
 mod utils;

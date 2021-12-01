@@ -74,11 +74,7 @@ impl SDLCore {
         let wincan = window.into_canvas().accelerated();
 
         // Check if we should lock to vsync
-        let wincan = if vsync {
-            wincan.present_vsync()
-        } else {
-            wincan
-        };
+        let wincan = if vsync { wincan.present_vsync() } else { wincan };
 
         let wincan = wincan.build().map_err(|e| e.to_string())?;
 

@@ -361,14 +361,8 @@ fn gen_bezier_curve(
     } else {
         //Cubic
         let p1: (f64, f64) = (
-            (point_mod_1.0 * (length / 2 + buffer) as f64
-                + p0.0
-                + buffer as f64
-                + (length / 2) as f64)
-                .clamp(
-                    p0.0 + buffer as f64 + (length / 2) as f64,
-                    (length - buffer) as f64,
-                ),
+            (point_mod_1.0 * (length / 2 + buffer) as f64 + p0.0 + buffer as f64 + (length / 2) as f64)
+                .clamp(p0.0 + buffer as f64 + (length / 2) as f64, (length - buffer) as f64),
             (point_mod_1.1 * p0.1 * 2.0 - p0.1).clamp(p0.1 - buffer as f64, height as f64),
         );
 
@@ -404,10 +398,7 @@ pub fn gen_cubic_bezier_curve_points(
     for t in 0..CAM_W as usize {
         let point = t as f64;
         //points[t] = quadratic_bezier_curve_point(p0, p1, p2, point / 32.0);
-        points.insert(
-            t,
-            cubic_bezier_curve_point(p0, p1, p2, p3, point / CAM_W as f64),
-        );
+        points.insert(t, cubic_bezier_curve_point(p0, p1, p2, p3, point / CAM_W as f64));
     }
     return points;
 }
@@ -428,10 +419,7 @@ pub fn gen_quadratic_bezier_curve_points(
     for t in 0..CAM_W as usize {
         let point = t as f64;
         //points[t] = quadratic_bezier_curve_point(p0, p1, p2, point / 32.0);
-        points.insert(
-            t,
-            quadratic_bezier_curve_point(p0, p1, p2, point / CAM_W as f64),
-        );
+        points.insert(t, quadratic_bezier_curve_point(p0, p1, p2, point / CAM_W as f64));
     }
     return points;
 }
@@ -534,16 +522,9 @@ fn gen_perlin_noise(random: &[[(i32, i32); 256]; 256], freq: f64, amp: f64) -> [
             let cord = (i, j);
 
             let n = noise_2d(&random, (cord.0 as f64 / 64.0, cord.1 as f64 / (freq))) * (amp)
-                + noise_2d(
-                    &random,
-                    (cord.0 as f64 / 32.0, cord.1 as f64 / (freq / 2.0)),
-                ) * (amp / 2.0)
-                + noise_2d(
-                    &random,
-                    (cord.0 as f64 / 16.0, cord.1 as f64 / (freq / 4.0)),
-                ) * (amp / 4.0)
-                + noise_2d(&random, (cord.0 as f64 / 8.0, cord.1 as f64 / (freq / 8.0)))
-                    * (amp / 8.0);
+                + noise_2d(&random, (cord.0 as f64 / 32.0, cord.1 as f64 / (freq / 2.0))) * (amp / 2.0)
+                + noise_2d(&random, (cord.0 as f64 / 16.0, cord.1 as f64 / (freq / 4.0))) * (amp / 4.0)
+                + noise_2d(&random, (cord.0 as f64 / 8.0, cord.1 as f64 / (freq / 8.0))) * (amp / 8.0);
             let modifier = n * 0.5 + 0.5;
 
             out[i][j] = modifier;
@@ -568,18 +549,9 @@ fn gen_perlin_noise(random: &[[(i32, i32); 256]; 256], freq: f64, amp: f64) -> [
  */
 fn gen_point_mod(random: &[[(i32, i32); 256]; 256], cord: (i32, i32), freq: f64, amp: f64) -> f64 {
     let n = noise_2d(&random, (cord.0 as f64 / (freq), cord.1 as f64 / (freq))) * (amp)
-        + noise_2d(
-            &random,
-            (cord.0 as f64 / (freq / 2.0), cord.1 as f64 / (freq / 2.0)),
-        ) * (amp / 2.0)
-        + noise_2d(
-            &random,
-            (cord.0 as f64 / (freq / 4.0), cord.1 as f64 / (freq / 4.0)),
-        ) * (amp / 4.0)
-        + noise_2d(
-            &random,
-            (cord.0 as f64 / (freq / 8.0), cord.1 as f64 / (freq / 8.0)),
-        ) * (amp / 8.0);
+        + noise_2d(&random, (cord.0 as f64 / (freq / 2.0), cord.1 as f64 / (freq / 2.0))) * (amp / 2.0)
+        + noise_2d(&random, (cord.0 as f64 / (freq / 4.0), cord.1 as f64 / (freq / 4.0))) * (amp / 4.0)
+        + noise_2d(&random, (cord.0 as f64 / (freq / 8.0), cord.1 as f64 / (freq / 8.0))) * (amp / 8.0);
     let modifier = n * 0.5 + 0.5;
     return modifier;
 }

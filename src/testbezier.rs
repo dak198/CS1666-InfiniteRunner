@@ -269,12 +269,7 @@ impl Game for TestBezier {
 
         while (width_index < 1280.0) {
             //set random color
-            let temp_color = Color::RGBA(
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
-                255,
-            );
+            let temp_color = Color::RGBA(rng.gen_range(0..255), rng.gen_range(0..255), rng.gen_range(0..255), 255);
             core.wincan.set_draw_color(temp_color);
             let mut prev_p2: (f64, f64) = p2;
             let mut prev_p3: (f64, f64) = p3;
@@ -306,8 +301,7 @@ impl Game for TestBezier {
             width_index = rand_width;
 
             if (first_curve) {
-                let group_of_points: Vec<(i32, i32)> =
-                    proceduralgen::gen_cubic_bezier_curve_points(p0, p1, p2, p3);
+                let group_of_points: Vec<(i32, i32)> = proceduralgen::gen_cubic_bezier_curve_points(p0, p1, p2, p3);
 
                 //DRAW
                 for t in 0..CAM_W as usize {

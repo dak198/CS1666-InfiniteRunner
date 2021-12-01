@@ -92,10 +92,8 @@ impl Game for Title {
         core.wincan.fill_rect(rect!(0, 0, CAM_W, CAM_H))?;
 
         // Draw text
-        core.wincan
-            .copy(&title_texture, None, Some(rect!(cx, 50, w, h)))?;
-        core.wincan
-            .copy(&play_texture, None, Some(rect!(125, 200, 600, 125)))?;
+        core.wincan.copy(&title_texture, None, Some(rect!(cx, 50, w, h)))?;
+        core.wincan.copy(&play_texture, None, Some(rect!(125, 200, 600, 125)))?;
         core.wincan
             .copy(&credits_texture, None, Some(rect!(125, 350, 700, 125)))?;
         core.wincan
@@ -116,9 +114,7 @@ impl Game for Title {
                         next_status = None;
                         break 'gameloop;
                     }
-                    Event::KeyDown {
-                        keycode: Some(k), ..
-                    } => match k {
+                    Event::KeyDown { keycode: Some(k), .. } => match k {
                         Keycode::P | Keycode::Space => {
                             next_status = Some(GameStatus::Game);
                             break 'gameloop;
