@@ -61,6 +61,7 @@ impl Game for TestBezier {
         Ok(TestBezier {})
     }
 
+    #[allow(unused_mut)]
     fn run(&mut self, core: &mut SDLCore) -> Result<GameState, String> {
         let g = Color::RGBA(0, 255, 0, 255);
         let b = Color::RGBA(0, 0, 255, 255);

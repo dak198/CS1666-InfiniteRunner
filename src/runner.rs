@@ -344,7 +344,7 @@ impl Game for Runner {
                     .atan();
 
                 /* ~~~~~~ Handle Input ~~~~~~ */
-                let mut keypress_moment: SystemTime = SystemTime::now();
+                let mut keypress_moment: SystemTime;
                 for event in core.event_pump.poll_iter() {
                     match event {
                         Event::Quit { .. } => break 'gameloop,
@@ -371,7 +371,7 @@ impl Game for Runner {
                             keycode: Some(k), ..
                         } => match k {
                             Keycode::W | Keycode::Up | Keycode::Space => {
-                                let mut jump_moment: SystemTime = player.jump_moment();
+                                let jump_moment: SystemTime = player.jump_moment();
                                 player.jump(
                                     curr_ground_point,
                                     SystemTime::now().duration_since(jump_moment).unwrap(),

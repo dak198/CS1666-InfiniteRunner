@@ -259,7 +259,8 @@ impl ProceduralGen {
         };
 
         // Extract x and y point from last terrain segment
-        let mut curve = gen_bezier_curve(
+        // let mut curve = gen_bezier_curve(
+        let curve = gen_bezier_curve(
             prev_point,
             cam_w,
             cam_h,

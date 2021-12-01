@@ -103,7 +103,7 @@ impl Game for Title {
 
         core.wincan.present();
 
-        let mut next_status = Some(GameStatus::Main);
+        let next_status: Option<GameStatus>;
 
         'gameloop: loop {
             for event in core.event_pump.poll_iter() {
