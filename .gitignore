@@ -1,7 +1,13 @@
 */*.dll
 Cargo.lock
+target
 */target/
+*/target/*
 *.DS_Store
 */*.DS_Store
 */*keycodes.txt
 */*temp_asset_paths.md
+*/*.xcf
+build.bat
+build.sh
+*.dll
